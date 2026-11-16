@@ -13,6 +13,7 @@ import leadRoutes from "./routes/leadRoutes.js";
 import visitRoutes from "./routes/visitRoutes.js";
 import dealRoutes from "./routes/dealRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
+import settingsRoutes from "./routes/settingsRoutes.js";
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ app.use("/api/leads", leadRoutes);
 app.use("/api/visits", visitRoutes);
 app.use("/api/deals", dealRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/settings", settingsRoutes);
 
 // Health check
 app.get("/", (req, res) => {

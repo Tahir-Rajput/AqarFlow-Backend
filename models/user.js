@@ -1,3 +1,4 @@
+
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
@@ -15,6 +16,12 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
+    },
+
+    phone: {
+      type: String,
+      trim: true,
+      default: "",
     },
 
     password: {

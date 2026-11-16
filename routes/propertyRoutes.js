@@ -12,28 +12,14 @@ import {
 
 import authMiddleware from "../middleware/authMiddleware.js";
 import roleMiddleware from "../middleware/roleMiddleware.js";
-import upload from "../middleware/uploadMiddleware.js";
+import { upload, handlePropertyImages } from "../middleware/uploadMiddleware.js";
 
-const router = express.Router();
-
-// Handle image upload errors
-const handlePropertyImages = (req, res, next) => {
-  upload.array("images", 10)(req, res, (error) => {
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    next();
-  });
-};
+  const router = express.Router();
 
 // All property-management routes require login
 router.use(authMiddleware);
 
-// Admin and Agent can create and view permitted properties
+// Admin and Agent can create properties
 router.post(
   "/",
   roleMiddleware("admin", "agent"),
@@ -41,15 +27,21 @@ router.post(
   createProperty
 );
 
-router.get("/", roleMiddleware("admin", "agent"), getProperties);
+// Admin and Agent can view permitted properties
+router.get(
+  "/",
+  roleMiddleware("admin", "agent"),
+  getProperties
+  );
 
+// Get one property
 router.get(
   "/:propertyId",
   roleMiddleware("admin", "agent"),
   getPropertyById
 );
 
-// Admin and Agent can update/delete properties within their permitted scope
+// Update property with optional image uploads
 router.patch(
   "/:propertyId",
   roleMiddleware("admin", "agent"),
@@ -57,6 +49,7 @@ router.patch(
   updateProperty
 );
 
+// Delete property
 router.delete(
   "/:propertyId",
   roleMiddleware("admin", "agent"),

@@ -1,8 +1,10 @@
 
 import multer from "multer";
 
+// Store uploaded images temporarily in memory
 const storage = multer.memoryStorage();
 
+// Allow only supported image formats
 const fileFilter = (req, file, cb) => {
   const allowedTypes = [
     "image/jpeg",
@@ -10,22 +12,34 @@ const fileFilter = (req, file, cb) => {
     "image/webp",
   ];
 
-  if (!allowedTypes.includes(file.mimetype)) {
-    return cb(
-      new Error("Only JPG, PNG, and WEBP images are allowed.")
-    );
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only JPG, PNG, and WEBP images are allowed."));
   }
-
-  cb(null, true);
 };
 
-const upload = multer({
+// Multer configuration
+export const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024,
-    files: 10,
+    fileSize: 5 * 1024 * 1024, // 5 MB per image
   },
 });
+
+// Handle property image uploads
+export const handlePropertyImages = (req, res, next) => {
+  upload.array("images", 10)(req, res, (error) => {
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    next();
+  });
+};
 
 export default upload;

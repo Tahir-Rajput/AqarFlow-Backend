@@ -1,12 +1,109 @@
+
 import User from "../models/user.js";
+import Agency from "../models/agency.js";
 import jwt from "jsonwebtoken";
+
+// Register a new agency and its first Admin
+export const register = async (req, res) => {
+  let agency;
+
+  try {
+    const {
+      name,
+      email,
+      password,
+      agencyName,
+      phone,
+      address,
+      city,
+    } = req.body;
+
+    // Validate required fields
+    if (!name?.trim() || !email?.trim() || !password || !agencyName?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Name, email, password, and agency name are required.",
+      });
+    }
+
+    // Validate password length
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters long.",
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Check whether email is already registered
+    const existingUser = await User.findOne({
+      email: normalizedEmail,
+    });
+
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        message: "An account with this email already exists.",
+      });
+    }
+
+    // Create agency
+    agency = await Agency.create({
+      name: agencyName.trim(),
+      email: normalizedEmail,
+      phone: phone?.trim(),
+      address: address?.trim(),
+      city: city?.trim(),
+    });
+
+    // Create first Admin for this agency
+    const user = await User.create({
+      name: name.trim(),
+      email: normalizedEmail,
+      password,
+      role: "admin",
+      agencyId: agency._id,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Account created successfully. You can now sign in.",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        agencyId: user.agencyId,
+      },
+    });
+  } catch (error) {
+    // Remove agency if user creation fails
+    if (agency) {
+      await Agency.findByIdAndDelete(agency._id).catch(() => {});
+    }
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "An account with this email already exists.",
+      });
+    }
+
+    console.error("Registration error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Account registration failed. Please try again.",
+    });
+  }
+};
 
 // Login user
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validate input
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -14,7 +111,6 @@ export const login = async (req, res) => {
       });
     }
 
-    // Check JWT configuration
     if (!process.env.JWT_SECRET) {
       return res.status(500).json({
         success: false,
@@ -22,12 +118,10 @@ export const login = async (req, res) => {
       });
     }
 
-    // Find user and explicitly include password
     const user = await User.findOne({
       email: email.trim().toLowerCase(),
     }).select("+password");
 
-    // Use the same error for unknown email and incorrect password
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -35,7 +129,6 @@ export const login = async (req, res) => {
       });
     }
 
-    // Check account status
     if (!user.isActive) {
       return res.status(403).json({
         success: false,
@@ -43,7 +136,6 @@ export const login = async (req, res) => {
       });
     }
 
-    // Compare entered password with hashed password
     const isPasswordCorrect = await user.comparePassword(password);
 
     if (!isPasswordCorrect) {
@@ -53,14 +145,12 @@ export const login = async (req, res) => {
       });
     }
 
-    // Generate JWT
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
-    // Store JWT in an HTTP-only cookie
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
